@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-collector
+  namespace: laba14
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: health-collector
+  template:
+    metadata:
+      labels:
+        app: health-collector
+    spec:
+      containers:
+        - name: collector
+          image: laba14-health-collector:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: COLLECTOR_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: HTTP_ADDR
+              value: ":8080"
+            - name: ETCD_ENDPOINTS
+              value: "http://etcd:2379"
+            - name: KAFKA_BROKERS
+              value: "kafka:9092"
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: health-collector
+  namespace: laba14
+spec:
+  selector:
+    app: health-collector
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

@@ -1,0 +1,10 @@
+bin/
+dist/
+target/
+*.exe
+*.dll
+*.so
+*.dylib
+__pycache__/
+.venv/
+.pytest_cache/

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kafka-install-note
+  namespace: laba14
+data:
+  README: |
+    For minikube/k3s use a standard Kafka chart, for example:
+    helm repo add bitnami https://charts.bitnami.com/bitnami
+    helm install kafka bitnami/kafka --namespace laba14
