@@ -7,7 +7,6 @@ import statistics
 import time
 from dataclasses import dataclass
 
-import aiohttp
 import psutil
 
 
@@ -44,6 +43,8 @@ def simulate(source: Source) -> dict[str, object]:
 
 
 async def collect(duration: float, rate: int) -> dict[str, float]:
+    import aiohttp
+
     process = psutil.Process()
     latencies: list[float] = []
     deadline = time.monotonic() + duration
@@ -65,17 +66,22 @@ async def collect(duration: float, rate: int) -> dict[str, float]:
 
 async def dry_collect(duration: float, rate: int) -> dict[str, float]:
     process = psutil.Process()
+    process.cpu_percent(interval=None)
     total = 0
     deadline = time.monotonic() + duration
     while time.monotonic() < deadline:
-        for _ in range(rate):
+        limit = rate if rate > 0 else 10000
+        for i in range(limit):
             simulate(random.choice(SOURCES))
             total += 1
-        await asyncio.sleep(1)
+        if rate > 0:
+            await asyncio.sleep(1)
+        else:
+            await asyncio.sleep(0)
     return {
         "records_per_second": total / duration,
         "rss_mb": process.memory_info().rss / 1024 / 1024,
-        "cpu_percent": process.cpu_percent(),
+        "cpu_percent": process.cpu_percent(interval=None),
     }
 
 
