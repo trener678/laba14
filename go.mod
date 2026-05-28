@@ -2,7 +2,10 @@ module laba14-health-pipeline
 
 go 1.26
 
-require github.com/apache/arrow-go/v18 v18.4.1
+require (
+	github.com/apache/arrow-go/v18 v18.4.1
+	github.com/segmentio/kafka-go v0.4.51
+)
 
 require (
 	github.com/goccy/go-json v0.10.5 // indirect

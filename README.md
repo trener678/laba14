@@ -19,7 +19,7 @@
 - Передача через Apache Arrow: HTTP endpoint `/arrow/aggregates` отдает Arrow IPC stream с RecordBatch.
 - Rust-библиотека валидации: `rust/health_validator` проверяет поля и диапазоны, есть C ABI для cgo-сборки.
 - Kubernetes-развертывание: Dockerfile, Deployment, Service, etcd и HPA по CPU.
-- Потоковая обработка: Go-сборщик имеет Kafka-совместимый JSONL fallback для локального режима, Python-анализатор читает реальный Kafka-топик и поддерживает скользящее окно 5 минут.
+- Потоковая обработка: Go-сборщик публикует агрегаты в Kafka через `segmentio/kafka-go`, Python-анализатор читает тот же топик и поддерживает скользящее окно 5 минут.
 - Python-сборщик для сравнения производительности: `python/collector/async_collector.py`.
 - Веб-дашборд Streamlit: `python/dashboard/app.py`, обновляет графики по Arrow endpoint.
 
@@ -73,8 +73,15 @@ streamlit run dashboard/app.py
 docker compose up --build
 ```
 
-В compose поднимаются etcd, Kafka и два экземпляра Go-сборщика. Каждый collector регистрируется в etcd и получает свою часть источников.
-В локальном Go-режиме агрегаты также пишутся в `health-aggregates.kafka.jsonl`, чтобы отлаживать потоковую часть без обязательного брокера.
+В compose поднимаются etcd, Kafka и два экземпляра Go-сборщика. Каждый collector регистрируется в etcd, получает свою часть источников и публикует оконные агрегаты в Kafka topic `health-aggregates`.
+
+Проверка сквозной цепочки Go -> Kafka -> Python:
+
+```powershell
+docker compose up --build
+cd python
+python -m analyzer.kafka_stream --brokers localhost:29092 --topic health-aggregates
+```
 
 ## Kubernetes
 

@@ -3,44 +3,45 @@ package kafkastream
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"sync"
 	"time"
+
+	"github.com/segmentio/kafka-go"
 
 	"laba14-health-pipeline/internal/health"
 )
 
 type Producer struct {
-	mu    sync.Mutex
-	file  *os.File
-	topic string
+	writer *kafka.Writer
 }
 
 func NewProducer(brokers []string, topic string) *Producer {
-	_ = brokers
-	file, _ := os.OpenFile("health-aggregates.kafka.jsonl", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
-	return &Producer{file: file, topic: topic}
+	return &Producer{
+		writer: &kafka.Writer{
+			Addr:                   kafka.TCP(brokers...),
+			Topic:                  topic,
+			Balancer:               &kafka.Hash{},
+			RequiredAcks:           kafka.RequireOne,
+			AllowAutoTopicCreation: true,
+			BatchSize:              32,
+			BatchTimeout:           100 * time.Millisecond,
+			WriteTimeout:           10 * time.Second,
+			ReadTimeout:            10 * time.Second,
+		},
+	}
 }
 
 func (p *Producer) Publish(ctx context.Context, aggregate health.Aggregate) error {
-	_ = ctx
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	if p.file == nil {
-		return nil
-	}
 	payload, err := json.Marshal(aggregate)
 	if err != nil {
 		return err
 	}
-	_, err = p.file.Write(append(payload, '\n'))
-	time.Sleep(1 * time.Millisecond)
-	return err
+	return p.writer.WriteMessages(ctx, kafka.Message{
+		Time:  time.Now().UTC(),
+		Key:   []byte(aggregate.Metric),
+		Value: payload,
+	})
 }
 
 func (p *Producer) Close() error {
-	if p.file == nil {
-		return nil
-	}
-	return p.file.Close()
+	return p.writer.Close()
 }
